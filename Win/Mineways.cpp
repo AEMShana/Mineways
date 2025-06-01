@@ -9774,7 +9774,7 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
 
     int w = xmax - xmin + 1;
     int h = zmax - zmin + 1;
-    int zoom = (int)(gCurScale + 0.5f);
+    int zoom = 1;
 
     assert(w % ENTITY_CHUNK_SIZE == 0);
     assert(h % ENTITY_CHUNK_SIZE == 0);
