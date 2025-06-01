@@ -855,7 +855,6 @@ static bool writeTileFromMasterOutput(wchar_t* filename, progimage_info* src, in
 static bool doesTileHaveAlpha(progimage_info* src, int swatchLoc, int swatchSize, int swatchesPerRow);
 //static int isTileCutoutOrAlpha(progimage_info* src, int swatchLoc, int swatchSize, int swatchesPerRow);
 
-static void removeSuffix(wchar_t* dst, const wchar_t* src, const wchar_t* suffix);
 //static const wchar_t *removePath( const wchar_t *src );
 static const char* removePathChar(const char* src);
 
@@ -34364,7 +34363,7 @@ void EnsureSuffix(wchar_t* dst, const wchar_t* src, const wchar_t* suffix)
     }
 }
 
-static void removeSuffix(wchar_t* dst, const wchar_t* src, const wchar_t* suffix)
+void RemoveSuffix(wchar_t* dst, const wchar_t* src, const wchar_t* suffix)
 {
     // glue the suffix on if it's missing
     EnsureSuffix(dst, src, suffix);
@@ -34472,21 +34471,21 @@ static void getPathAndRoot(const wchar_t* src, int fileType, wchar_t* path, wcha
     {
     case FILE_TYPE_WAVEFRONT_REL_OBJ:
     case FILE_TYPE_WAVEFRONT_ABS_OBJ:
-        removeSuffix(root, tfilename, L".obj");
+        RemoveSuffix(root, tfilename, L".obj");
         break;
     case FILE_TYPE_USD:
-        removeSuffix(root, tfilename, L".usda");
+        RemoveSuffix(root, tfilename, L".usda");
         break;
     case FILE_TYPE_BINARY_MAGICS_STL:
     case FILE_TYPE_BINARY_VISCAM_STL:
     case FILE_TYPE_ASCII_STL:
-        removeSuffix(root, tfilename, L".stl");
+        RemoveSuffix(root, tfilename, L".stl");
         break;
     case FILE_TYPE_VRML2:
-        removeSuffix(root, tfilename, L".wrl");
+        RemoveSuffix(root, tfilename, L".wrl");
         break;
     case FILE_TYPE_SCHEMATIC:
-        removeSuffix(root, tfilename, L".schematic");
+        RemoveSuffix(root, tfilename, L".schematic");
         break;
     }
 }

@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "tiles.h"
 #include "blockInfo.h"
 #include "biomes.h"
+#include <vector>
 
 #ifndef WIN32
 #define __declspec(a)
@@ -104,6 +105,7 @@ void SetHighlightState(int on, int minx, int miny, int minz, int maxx, int maxy,
 void GetHighlightState(int* on, int* minx, int* miny, int* minz, int* maxx, int* maxy, int* maxz, int mapMinHeight);
 int DrawMapToArray(unsigned char* image, WorldGuide* pWorldGuide, int cx, int cz, int topy, int mapMaxY, int w, int h, int zoom, Options* pOpts, int* hitsFound, ProgressCallback callback, int mcVersion, int versionID);
 int DrawMap(WorldGuide* pWorldGuide, double cx, double cz, int topy, int mapMaxY, int w, int h, double zoom, unsigned char* bits, Options* pOpts, int hitsFound[3], ProgressCallback callback, int mcVersion, int versionID);
+int UnpackVoxelDataToEntityChunk(std::vector<uint32_t>& entityChunkData, WorldGuide* pWorldGuide, int cx, int cz, int bottomY, Options* pOpts, int mcVersion, int versionID);
 const char* IDBlock(int bx, int by, double cx, double cz, int w, int h, int yOffset, double zoom, int* ox, int* oy, int* oz, int* type, int* dataVal, int* biome, bool schematic);
 const char* RetrieveBlockSubname(int type, int dataVal); //, WorldBlock* block = NULL, int xoff = 0, int y = 0, int zoff = 0);
 void CloseAll();
@@ -129,3 +131,7 @@ void ClearUnknownBlockNameString();
 void SetUnknownBlockID(int val);
 int GetUnknownBlockID();
 void GetBadChunkLocation(int* bx, int* bz);
+
+#define BLOCK_INDEX(x,topy,z) (  ((topy)*256)+ \
+    ((z)*16) + \
+    (x)  )

@@ -44,6 +44,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <string>
+#include <locale>
+#include <codecvt>
+#include "VDB.h"
 
 // Should really make a full-featured error system, a la https://www.softwariness.com/articles/assertions-in-cpp/, but this'll do for now.
 // trick so that there is not a warning that there's a constant value being tested by an "if"
@@ -191,6 +195,8 @@ static int gBottomControlEnabled = FALSE;
 #define SKETCHFAB_EXPORT	3
 #define MAP_EXPORT          4
 #define ENTITY_CHUNK_EXPORT 5
+
+#define ENTITY_CHUNK_SIZE   256
 
 static int gPrintModel = RENDERING_EXPORT;
 static BOOL gExported = 0;
@@ -492,6 +498,7 @@ static bool openLogFile(ImportedSet& is);
 static void showLoadWorldError(int loadErr);
 static void checkMapDrawErrorCode(int retCode);
 static bool saveMapFile(int xmin, int zmin, int xmax, int ymax, int zmax, wchar_t* mapFileName);
+static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax, wchar_t* mapFileName);
 static int FilterMessageBox(HWND hWnd, LPCTSTR lpText, LPCTSTR lpCaption, UINT uType);
 static void GoToBedrockHelpOnOK(int retcode);
 
@@ -505,6 +512,8 @@ int APIENTRY _tWinMain(
 #ifdef TEST_FOR_MEMORY_LEAKS
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
+
+    VDB__Init();
 
     // get version info
     gMinewaysMajorVersion = MINEWAYS_MAJOR_VERSION;
@@ -2252,7 +2261,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     else if (gPrintModel == ENTITY_CHUNK_EXPORT) {
                         // export 2D map image
                         GetHighlightState(&on, &gpEFD->minxVal, &gpEFD->minyVal, &gpEFD->minzVal, &gpEFD->maxxVal, &gpEFD->maxyVal, &gpEFD->maxzVal, gMinHeight);
-                        gExported = saveMapFile(gpEFD->minxVal, gpEFD->minzVal, gpEFD->maxxVal, gpEFD->maxyVal, gpEFD->maxzVal, gExportPath);
+                        gExported = saveEntityChunkFile(gpEFD->minxVal, gpEFD->maxxVal, gpEFD->minyVal, gpEFD->maxyVal, gpEFD->minzVal, gpEFD->maxzVal, gExportPath);
                     }
                     else {
                         gExported = saveObjFile(hWnd, gExportPath, gPrintModel, gSelectTerrainPathAndName, gSchemeSelected, (gExported == 0), gShowPrintStats);
@@ -9562,7 +9571,7 @@ static bool commandExportFile(ImportedSet& is, wchar_t* error, int fileMode, cha
         // export entity chunk for project-vs
         int on;
         GetHighlightState(&on, &gpEFD->minxVal, &gpEFD->minyVal, &gpEFD->minzVal, &gpEFD->maxxVal, &gpEFD->maxyVal, &gpEFD->maxzVal, gMinHeight);
-        gExported = saveMapFile(gpEFD->minxVal, gpEFD->minzVal, gpEFD->maxxVal, gpEFD->maxyVal, gpEFD->maxzVal, wcharFileName);
+        gExported = saveEntityChunkFile(gpEFD->minxVal, gpEFD->maxxVal, gpEFD->minyVal, gpEFD->maxyVal, gpEFD->minzVal, gpEFD->maxzVal, wcharFileName);
         if (gExported == 0) {
             sendStatusMessage(is.ws.hwndStatus, L"Script export entity chunk operation failed");
             swprintf_s(error, 1024, L"export entity chunk operation failed.");
@@ -9736,6 +9745,124 @@ static void checkMapDrawErrorCode(int retCode)
     }
 }
 
+std::string wstring_to_utf8(const std::wstring& wstr) {
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(wstr);
+}
+
+static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax, wchar_t* mapFileName) {
+    int temp, retCode = 0;
+    if (xmin > xmax) {
+        // swap
+        temp = xmin;
+        xmin = xmax;
+        xmax = temp;
+    }
+    if (zmin > zmax) {
+        // swap
+        temp = zmin;
+        zmin = zmax;
+        zmax = temp;
+    }
+
+    // ¶ÔÆëµ½ ENTITY_CHUNK_SIZE
+    xmin = (int)std::floor((double)xmin / (double)ENTITY_CHUNK_SIZE) * ENTITY_CHUNK_SIZE;
+    xmax = (int)std::ceil((double)xmax / (double)ENTITY_CHUNK_SIZE) * ENTITY_CHUNK_SIZE - 1;
+
+    zmin = (int)std::floor((double)zmin / (double)ENTITY_CHUNK_SIZE) * ENTITY_CHUNK_SIZE;
+    zmax = (int)std::ceil((double)zmax / (double)ENTITY_CHUNK_SIZE) * ENTITY_CHUNK_SIZE - 1;
+
+    int w = xmax - xmin + 1;
+    int h = zmax - zmin + 1;
+    int zoom = (int)(gCurScale + 0.5f);
+
+    assert(w % ENTITY_CHUNK_SIZE == 0);
+    assert(h % ENTITY_CHUNK_SIZE == 0);
+
+    vdb::SparseVoxelChunk* pEntityChunk = NativeSparseVoxelChunk__Create();
+
+    // first, can we even make such an image?
+    progimage_info* mapimage;
+    mapimage = new progimage_info();
+    mapimage->width = zoom * ENTITY_CHUNK_SIZE;
+    mapimage->height = zoom * ENTITY_CHUNK_SIZE;
+    mapimage->image_data.resize(ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE * 3 * zoom * zoom * sizeof(unsigned char), 0x0);
+    unsigned char* imageDst = &mapimage->image_data[0];
+
+    // turn off highlight for map draw
+    SetHighlightState(0, xmin, gTargetDepth, zmin, xmax, ymax, zmax, gMinHeight, gMaxHeight, HIGHLIGHT_UNDO_IGNORE);
+
+    ClearUnknownBlockNameString();
+
+    // check if map file has ".png" at the end - if not, add it.
+    wchar_t chunkFileNameSafe[MAX_PATH_AND_FILE];
+    wchar_t pngFileNameSafe[MAX_PATH_AND_FILE];
+
+    wcscpy_s(chunkFileNameSafe, MAX_PATH_AND_FILE, mapFileName);
+    RemoveSuffix(chunkFileNameSafe, mapFileName, L".png");
+
+    std::vector<uint32_t> entityChunkData(ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE);
+
+    float percent = 0.0f;
+    float pctprogress = 0.1f;
+
+    int totalEntityChunkCount = (w / ENTITY_CHUNK_SIZE) * (h / ENTITY_CHUNK_SIZE);
+
+    for (int chunkX = 0; chunkX < w / ENTITY_CHUNK_SIZE; ++chunkX) {
+        for (int chunkZ = 0; chunkZ < h / ENTITY_CHUNK_SIZE; ++chunkZ) {
+            // resize and clear
+            writepng_cleanup(mapimage);
+            mapimage->image_data.resize(ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE * 3 * zoom * zoom * sizeof(unsigned char), 0x0);
+            
+            checkMapDrawErrorCode(
+                DrawMapToArray(imageDst, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymax - gMinHeight, gMaxHeight, ENTITY_CHUNK_SIZE, ENTITY_CHUNK_SIZE, zoom, &gOptions, gHitsFound, nullptr, gMinecraftVersion, gVersionID)
+            );
+
+            std::wstringstream wss;
+            wss << chunkFileNameSafe << L"_x_" << chunkX << "_y_" << chunkZ << "_z_0";
+            std::wstring chunkIdStr = wss.str();
+            assert(chunkIdStr.size() != 0);
+
+            wcscpy_s(pngFileNameSafe, MAX_PATH_AND_FILE, chunkIdStr.data());
+            EnsureSuffix(pngFileNameSafe, pngFileNameSafe, L".png");
+
+            // 0 means success. Currently we don't say what goes wrong otherwise.
+            retCode |= writepng(mapimage, 3, pngFileNameSafe);
+            assert(retCode == 0);
+            if (retCode) break;
+        
+            checkMapDrawErrorCode(
+                UnpackVoxelDataToEntityChunk(entityChunkData, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymin - gMinHeight, &gOptions, gMinecraftVersion, gVersionID)
+            );
+
+            for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
+                for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
+                    for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
+                        NativeSparseVoxelChunk__SetVoxel(pEntityChunk, x, y, z, entityChunkData[x + y * ENTITY_CHUNK_SIZE + z * ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE]);
+                    }
+                }
+                percent = (float)((chunkZ + chunkX * (h / ENTITY_CHUNK_SIZE)) * ENTITY_CHUNK_SIZE + z) / (float)(totalEntityChunkCount * ENTITY_CHUNK_SIZE);
+                if (percent > pctprogress) {
+                    updateProgress(percent, NULL);
+                    pctprogress += 0.05f;
+                }
+            }
+
+            std::string entityChunkFileName = wstring_to_utf8(chunkIdStr);
+            entityChunkFileName += ".sector_voxel";
+            NativeSparseVoxelChunk__SaveToVoxelFile(pEntityChunk, entityChunkFileName.c_str());
+
+        }
+        if (retCode) break;
+    }
+
+    delete mapimage;
+    NativeSparseVoxelChunk__Destroy(pEntityChunk);
+
+    // turn highlight back on, now that we're done
+    SetHighlightState(gHighlightOn, xmin, gTargetDepth, zmin, xmax, gCurDepth, zmax, gMinHeight, gMaxHeight, HIGHLIGHT_UNDO_IGNORE);
+    return (retCode == 0);
+}
 
 static bool saveMapFile(int xmin, int zmin, int xmax, int ymax, int zmax, wchar_t* mapFileName)
 {

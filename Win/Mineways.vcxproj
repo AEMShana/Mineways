@@ -113,19 +113,26 @@
       <PreprocessorDefinitions>WIN32;CURL_STATICLIB;USE_SSLEAY;_DEBUG;_WINDOWS;MINEWAYS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\voxeldb\include;$(SolutionDir)dependencies;$(SolutionDir)Win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcurld.lib;ws2_32.lib;wldap32.lib;libeay32MTd.lib;ssleay32MTd.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;comctl32.lib;shlwapi.lib;version.lib;zlibstat64.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurld.lib;ws2_32.lib;wldap32.lib;libeay32MTd.lib;ssleay32MTd.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;comctl32.lib;shlwapi.lib;version.lib;zlibstat64.lib;wininet.lib;VoxelOpenWorldNativeBackend.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>libcmtd.lib</IgnoreSpecificDefaultLibraries>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalLibraryDirectories>..\dependencies\curl\lib\win64;..\dependencies\openssl\lib\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\voxeldb\lib\debug;..\dependencies\curl\lib\win64;..\dependencies\openssl\lib\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
       <StackReserveSize>1500000</StackReserveSize>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\debug\VoxelOpenWorldNativeBackend.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\debug\VoxelOpenWorldNativeBackend.pdb" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\debug\assimp-vc143-mtd.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\debug\assimp-vc143-mtd.pdb" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -161,20 +168,27 @@
       <PreprocessorDefinitions>WIN32;CURL_STATICLIB;USE_SSLEAY;NDEBUG;_WINDOWS;MINEWAYS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies\voxeldb\include;$(SolutionDir)dependencies;$(SolutionDir)Win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>libcurl.lib;ws2_32.lib;wldap32.lib;libeay32MT.lib;ssleay32MT.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;comctl32.lib;shlwapi.lib;version.lib;zlibstat64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurl.lib;ws2_32.lib;wldap32.lib;libeay32MT.lib;ssleay32MT.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;comctl32.lib;shlwapi.lib;version.lib;zlibstat64.lib;VoxelOpenWorldNativeBackend.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMT.lib;</IgnoreSpecificDefaultLibraries>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalLibraryDirectories>..\dependencies\curl\lib\win64;..\dependencies\openssl\lib\win64;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\voxeldb\lib\release;..\dependencies\curl\lib\win64;..\dependencies\openssl\lib\win64</AdditionalLibraryDirectories>
       <StackReserveSize>1500000</StackReserveSize>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\release\VoxelOpenWorldNativeBackend.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\release\VoxelOpenWorldNativeBackend.pdb" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\release\assimp-vc143-mt.dll" "$(OutDir)"
+xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\release\assimp-vc143-mt.pdb" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="sketchfab_banner.bmp" />

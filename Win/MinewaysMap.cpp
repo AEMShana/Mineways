@@ -42,6 +42,8 @@ static void clearUndoHighlight();
 static void copyHighlightState(HighlightBox& destBox, HighlightBox& srcBox);
 static unsigned char* draw(WorldGuide* pWorldGuide, int bx, int bz, int topy, int mapMaxY, Options* pOpts,
     ProgressCallback callback, float percent, float & pctprogress, int* hitsFound, int mcVersion, int versionID, int& retCode);
+static void acquireEntityChunkData(WorldGuide* pWorldGuide, int bx, int bz, int offsetX, int offsetZ, int bottomY,
+    Options* pOpts, int mcVersion, int versionID, std::vector<uint32_t>& entityChunkData, int& retCode);
 static void blit(unsigned char* block, unsigned char* bits, int px, int py, double zoom, int w, int h);
 static WorldBlock* determineMaxFilledHeight(WorldBlock* block);
 static int createBlockFromSchematic(WorldGuide* pWorldGuide, int cx, int cz, WorldBlock* block);
@@ -501,6 +503,33 @@ int DrawMapToArray(unsigned char* image, WorldGuide* pWorldGuide, int cx, int cz
         }
     }
     return sumRetCode;
+}
+
+int UnpackVoxelDataToEntityChunk(std::vector<uint32_t>& entityChunkData, WorldGuide* pWorldGuide, int cx, int cz, int bottomY, Options* pOpts, int mcVersion, int versionID) {
+    constexpr int chunkSize = 16; // mc chunk
+    constexpr int entityChunkSize = 256; // project-vs entity chunk
+    int sumRetCode = 0;
+    int retCode;
+
+    assert(cx % entityChunkSize == 0);
+    assert(cz % entityChunkSize == 0);
+
+    int startxblock = (int)(cx / chunkSize);
+    int startzblock = (int)(cz / chunkSize);
+
+    entityChunkData.clear();
+    entityChunkData.resize(entityChunkSize * entityChunkSize * entityChunkSize);
+
+    for (int z = 0; z < entityChunkSize / chunkSize; ++z) {
+        for (int x = 0; x < entityChunkSize / chunkSize; ++x) {
+            acquireEntityChunkData(pWorldGuide, startxblock + x, startzblock + z, x * chunkSize, z * chunkSize, bottomY, pOpts, mcVersion, versionID, entityChunkData, retCode);
+            sumRetCode |= retCode;
+            if (sumRetCode) break;
+        }
+        if (sumRetCode) break;
+    }
+
+   return sumRetCode;
 }
 
 //bx = x coord of pixel
@@ -5675,6 +5704,65 @@ static unsigned char* draw(WorldGuide* pWorldGuide, int bx, int bz, int heightAl
     return bits;
 }
 
+
+// Get voxel data at chunk bx,bz
+// returns 256x256x256 voxel id array.
+static void acquireEntityChunkData(WorldGuide* pWorldGuide, int bx, int bz, int offsetX, int offsetZ, int bottomY, Options* pOpts, int mcVersion, int versionID, std::vector<uint32_t>& entityChunkData, int& retCode) {
+    WorldBlock* block;
+    
+    retCode = 0;
+
+    void* data;
+    bool found = (WorldBlock*)Cache_Find(bx, bz, &data);
+    block = (WorldBlock*)data;
+
+    if (!found) {
+        wcsncpy_s(pWorldGuide->directory, MAX_PATH_AND_FILE, pWorldGuide->world, MAX_PATH_AND_FILE - 1);
+        wcscat_s(pWorldGuide->directory, MAX_PATH_AND_FILE, gSeparator);
+        if (pOpts->worldType & HELL) {
+            wcscat_s(pWorldGuide->directory, MAX_PATH_AND_FILE, L"DIM-1/");
+        }
+        if (pOpts->worldType & ENDER) {
+            wcscat_s(pWorldGuide->directory, MAX_PATH_AND_FILE, L"DIM1/");
+        }
+
+        //char debugString[256];
+        //sprintf_s(debugString, 256, "DEBUG: loading %d %d\n", bx, bz);
+        //OutputDebugStringA(debugString);
+
+        block = LoadBlock(pWorldGuide, bx, bz, mcVersion, versionID, retCode);
+
+        if (retCode < 0) {
+            // save bx and bz for error message later
+            saveBadChunkLocation(bx, bz);
+        }
+
+        // always add the block, even if empty, so that we don't have to look it up as
+        // being empty in the future
+        Cache_Add(bx, bz, block);
+
+        if ((block == NULL) || (block->blockType == NBT_NO_SECTIONS)) { //blank tile
+            return;
+        }
+    }
+    else if (block == NULL || block->blockType == NBT_NO_SECTIONS) {
+        return;
+    }
+    // At this point the block is loaded.
+
+    constexpr int EntityChunkSize = 256;
+    constexpr int BlockSize = 16;
+
+    for (int y = bottomY; y < block->heightAlloc && y - bottomY < EntityChunkSize; ++y) {
+        for (int x = 0; x < BlockSize; ++x) {
+            for (int z = 0; z < BlockSize; ++z) {
+                uint32_t value = block->grid[BLOCK_INDEX(x, y, z)];
+                entityChunkData[(x + offsetX) + (z + offsetZ) * EntityChunkSize + ((y - bottomY) * EntityChunkSize * EntityChunkSize)] = value;
+            }
+        }
+    }
+}
+
 // if it fails, that's OK, it just does nothing
 void GetChunkHeights(WorldGuide* pWorldGuide, int& minHeight, int& maxHeight, int mcVersion, int mx, int mz)
 {
@@ -5705,10 +5793,6 @@ void GetChunkHeights(WorldGuide* pWorldGuide, int& minHeight, int& maxHeight, in
     pWorldGuide->minHeight = minHeight;
     pWorldGuide->maxHeight = maxHeight;
 }
-
-#define BLOCK_INDEX(x,topy,z) (  ((topy)*256)+ \
-    ((z)*16) + \
-    (x)  )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
