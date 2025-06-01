@@ -190,6 +190,7 @@ static int gBottomControlEnabled = FALSE;
 #define SCHEMATIC_EXPORT	2
 #define SKETCHFAB_EXPORT	3
 #define MAP_EXPORT          4
+#define ENTITY_CHUNK_EXPORT 5
 
 static int gPrintModel = RENDERING_EXPORT;
 static BOOL gExported = 0;
@@ -1396,12 +1397,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     if (gFullLow)
                     {
                         gFullLow = 0;
-                        swprintf_s(msgString, 1024, L"Some blocks in your selection are visible below the current depth of %d.\n\nWhen you select, you're selecting in three dimensions, and there is a depth, shown on the 'Depth' slider near the top. You can adjust this depth by using this slider or '[' & ']' keys.\n\nDo you want to set the depth to %d to select all visible blocks?\nSelect 'Cancel' to turn off this autocorrection system.\n\nUse the spacebar later if you want to make this type of correction for a given selection.",
+                        swprintf_s(msgString, 1024, L"您选中的部分方块位于当前深度 %d 以下。\n\n选区操作是在三维空间中进行的，深度值显示在顶部的\"Depth\"滑块处。您可以通过该滑块或使用 '[' 和 ']' 键调整深度。\n\n是否要将深度设为 %d 以选中所有可见方块？\n选择\"取消\"可关闭此自动校正功能。\n\n若需对特定选择执行此类校正操作，可在后续使用空格键。",
                             gTargetDepth, minHeightFound);
                     }
                     else
                     {
-                        swprintf_s(msgString, 1024, L"Some blocks in your selection are visible below the current depth of %d.\n\nDo you want to set the depth to %d to select all visible blocks? Select 'Cancel' to turn off this autocorrection system.\n\nUse the spacebar later if you want to make this type of correction for a given selection.",
+                        swprintf_s(msgString, 1024, L"您选择中的一些方块在当前深度 %d 以下可见。\n\n是否要将深度设置为 %d 以选择所有可见方块？选择\"取消\"以关闭此自动校正系统。\n\n如果需要为特定选择执行此类校正，稍后请按空格键。",
                             gTargetDepth, minHeightFound);
                     }
                 }
@@ -1410,12 +1411,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     if (gFullLow)
                     {
                         gFullLow = 0;
-                        swprintf_s(msgString, 1024, L"The current selection's depth of %d contains hidden lower layers.\n\nWhen you select, you're selecting in three dimensions, and there is a depth, shown on the 'Depth' slider near the top. You can adjust this depth by using this slider or '[' & ']' keys.\n\nDo you want to set the depth to %d to minimize the underground? (\"Yes\" is probably what you want.) Select 'Cancel' to turn off this autocorrection system.\n\nUse the spacebar later if you want to make this type of correction for a given selection.",
+                        swprintf_s(msgString, 1024, L"当前选择的深度为 %d，包含不可见的地下部分。\n\n请注意您是在三维空间中进行选择，存在深度层级，正如顶部附近的\"Depth\"滑块所示。可通过此滑块或'['和']'键调整深度。\n\n是否要将深度设为 %d 以最小化地下层级？（\"是\"可能是您需要的选项。）选择\"取消\"以关闭此自动校正系统。\n\n后续如需针对特定选择执行此类校正，请使用空格键。",
                             gTargetDepth, minHeightFound);
                     }
                     else
                     {
-                        swprintf_s(msgString, 1024, L"The current selection's depth of %d contains hidden lower layers.\n\nDo you want to set the depth to %d to minimize the underground? Select 'Cancel' to turn off this autocorrection system.\n\nUse the spacebar later if you want to make this type of correction for a given selection.",
+                        swprintf_s(msgString, 1024, L"当前选择的深度为 %d，包含不可见的地下部分。\n\n是否要将深度设为 %d 以最小化地下层级？选择\"取消\"以关闭此自动校正系统。\n\n以后如果需要对此类选择执行此类校正，请使用空格键。",
                             gTargetDepth, minHeightFound);
                     }
                 }
@@ -2104,6 +2105,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_FILE_SAVEOBJ:
             case IDM_FILE_SCHEMATIC:
             case IDM_FILE_EXPORTMAP:
+            case IDM_FILE_EXPORT_ENTITY_CHUNK:
                 if (!gHighlightOn)
                 {
                     // we keep the export options ungrayed now so that they're selectable when the world is loaded
@@ -2124,6 +2126,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case IDM_FILE_EXPORTMAP:
                     gPrintModel = MAP_EXPORT;
+                    break;
+                case IDM_FILE_EXPORT_ENTITY_CHUNK:
+                    gPrintModel = ENTITY_CHUNK_EXPORT;
                     break;
                 default:
                     MY_ASSERT(gAlwaysFail);
@@ -2165,6 +2170,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     wcscpy_s(path, MAX_PATH_AND_FILE, gImportPath);
                     ofn.lpstrInitialDir = path;
                     ofn.lpstrTitle = L"Export Map";
+                    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+                    saveOK = GetSaveFileName(&ofn);
+                }
+                else if (gPrintModel == ENTITY_CHUNK_EXPORT) {
+                    ZeroMemory(&ofn, sizeof(OPENFILENAME));
+                    ofn.lStructSize = sizeof(OPENFILENAME);
+                    ofn.hwndOwner = hWnd;
+                    ofn.lpstrFile = gExportPath;
+                    ofn.nMaxFile = MAX_PATH_AND_FILE;
+                    ofn.lpstrFilter = L"Portable Network Graphics (*.png)\0*.png\0";
+                    ofn.nFilterIndex = 0;
+                    ofn.lpstrFileTitle = NULL;
+                    ofn.nMaxFileTitle = 0;
+                    wcscpy_s(path, MAX_PATH_AND_FILE, gImportPath);
+                    ofn.lpstrInitialDir = path;
+                    ofn.lpstrTitle = L"Export Entity Chunk";
                     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
                     saveOK = GetSaveFileName(&ofn);
@@ -2223,6 +2245,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 case IDM_FILE_REPEATPREVIOUSEXPORT:
                     if (gPrintModel == MAP_EXPORT) {
+                        // export 2D map image
+                        GetHighlightState(&on, &gpEFD->minxVal, &gpEFD->minyVal, &gpEFD->minzVal, &gpEFD->maxxVal, &gpEFD->maxyVal, &gpEFD->maxzVal, gMinHeight);
+                        gExported = saveMapFile(gpEFD->minxVal, gpEFD->minzVal, gpEFD->maxxVal, gpEFD->maxyVal, gpEFD->maxzVal, gExportPath);
+                    }
+                    else if (gPrintModel == ENTITY_CHUNK_EXPORT) {
                         // export 2D map image
                         GetHighlightState(&on, &gpEFD->minxVal, &gpEFD->minyVal, &gpEFD->minzVal, &gpEFD->maxxVal, &gpEFD->maxyVal, &gpEFD->maxzVal, gMinHeight);
                         gExported = saveMapFile(gpEFD->minxVal, gpEFD->minzVal, gpEFD->maxxVal, gpEFD->maxyVal, gpEFD->maxzVal, gExportPath);
@@ -4197,6 +4224,7 @@ static void validateItems(HMENU menu)
         EnableMenuItem(menu, IDM_FILE_PRINTOBJ, MF_ENABLED);
         EnableMenuItem(menu, IDM_FILE_SCHEMATIC, MF_ENABLED);
         EnableMenuItem(menu, IDM_FILE_EXPORTMAP, MF_ENABLED);
+        EnableMenuItem(menu, IDM_FILE_EXPORT_ENTITY_CHUNK, MF_ENABLED);
 #ifdef SKETCHFAB
         EnableMenuItem(menu, IDM_PUBLISH_SKFB, MF_ENABLED);
 #else
@@ -4215,6 +4243,7 @@ static void validateItems(HMENU menu)
         EnableMenuItem(menu, IDM_FILE_PRINTOBJ, MF_DISABLED);
         EnableMenuItem(menu, IDM_FILE_SCHEMATIC, MF_DISABLED);
         EnableMenuItem(menu, IDM_FILE_EXPORTMAP, MF_DISABLED);
+        EnableMenuItem(menu, IDM_FILE_EXPORT_ENTITY_CHUNK, MF_DISABLED);
         EnableMenuItem(menu, IDM_PUBLISH_SKFB, MF_DISABLED);
         EnableMenuItem(menu, ID_VIEW_UNDOSELECTION, MF_DISABLED);
     }
@@ -9526,6 +9555,17 @@ static bool commandExportFile(ImportedSet& is, wchar_t* error, int fileMode, cha
         if (gExported == 0) {
             sendStatusMessage(is.ws.hwndStatus, L"Script export map operation failed");
             swprintf_s(error, 1024, L"export map operation failed.");
+            return false;
+        }
+    }
+    else if (gPrintModel == ENTITY_CHUNK_EXPORT) {
+        // export entity chunk for project-vs
+        int on;
+        GetHighlightState(&on, &gpEFD->minxVal, &gpEFD->minyVal, &gpEFD->minzVal, &gpEFD->maxxVal, &gpEFD->maxyVal, &gpEFD->maxzVal, gMinHeight);
+        gExported = saveMapFile(gpEFD->minxVal, gpEFD->minzVal, gpEFD->maxxVal, gpEFD->maxyVal, gpEFD->maxzVal, wcharFileName);
+        if (gExported == 0) {
+            sendStatusMessage(is.ws.hwndStatus, L"Script export entity chunk operation failed");
+            swprintf_s(error, 1024, L"export entity chunk operation failed.");
             return false;
         }
     }

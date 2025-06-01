@@ -35,6 +35,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "biomes.h"
 #include <assert.h>
 #include <string.h>
+#include <vector>
+#include <algorithm>
 
 static void clearUndoHighlight();
 static void copyHighlightState(HighlightBox& destBox, HighlightBox& srcBox);
