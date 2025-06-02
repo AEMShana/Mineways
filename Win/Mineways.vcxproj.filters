@@ -44,6 +44,7 @@
     <ClInclude Include="XZip.h" />
     <ClInclude Include="zconf.h" />
     <ClInclude Include="zlib.h" />
+    <ClInclude Include="MinewaysPjvsMapTable.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Mineways.rc" />

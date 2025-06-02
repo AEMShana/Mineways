@@ -5757,7 +5757,9 @@ static void acquireEntityChunkData(WorldGuide* pWorldGuide, int bx, int bz, int 
         for (int x = 0; x < BlockSize; ++x) {
             for (int z = 0; z < BlockSize; ++z) {
                 uint32_t value = block->grid[BLOCK_INDEX(x, y, z)];
-                entityChunkData[(x + offsetX) + (z + offsetZ) * EntityChunkSize + ((y - bottomY) * EntityChunkSize * EntityChunkSize)] = value;
+                uint32_t variantValue = block->data[BLOCK_INDEX(x, y, z)];
+                uint32_t packedValue = (variantValue << 16) | value;
+                entityChunkData[(x + offsetX) + (z + offsetZ) * EntityChunkSize + ((y - bottomY) * EntityChunkSize * EntityChunkSize)] = packedValue;
             }
         }
     }
