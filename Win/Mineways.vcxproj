@@ -205,6 +205,7 @@ xcopy /y /d "$(SolutionDir)dependencies\voxeldb\lib\release\assimp-vc143-mt.pdb"
     <ClInclude Include="mdlFiles.h" />
     <ClInclude Include="Mineways.h" />
     <ClInclude Include="MinewaysMap.h" />
+    <ClInclude Include="MinewaysPjvsMapTable.h" />
     <ClInclude Include="nbt.h" />
     <ClInclude Include="ObjFileManip.h" />
     <ClInclude Include="PublishSkfb.h" />
