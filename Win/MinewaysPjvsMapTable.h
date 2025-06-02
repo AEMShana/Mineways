@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
-static const std::unordered_map<int, int> MinewaysPjvsMapTable = {
-    {0, 1073741825},
+std::unordered_map<int, int> MinewaysPjvsMapTable = {
+    {0, 0},
     {10878976, 1073741835},
     {65536, 1073742002},
     {65537, 1073741991},
