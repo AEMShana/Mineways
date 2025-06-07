@@ -51,6 +51,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 // 自动生成的头文件，生成器在：ProjectVS/Scripts
 #include "MinewaysPjvsMapTable.h"
+#include <fstream>
 
 // Should really make a full-featured error system, a la https://www.softwariness.com/articles/assertions-in-cpp/, but this'll do for now.
 // trick so that there is not a warning that there's a constant value being tested by an "if"
@@ -9840,6 +9841,8 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
 
     int totalEntityChunkCount = (w / ENTITY_CHUNK_SIZE) * (h / ENTITY_CHUNK_SIZE);
 
+    std::ofstream errorLog("error.log");
+
     for (int chunkX = 0; chunkX < w / ENTITY_CHUNK_SIZE; ++chunkX) {
         for (int chunkZ = 0; chunkZ < h / ENTITY_CHUNK_SIZE; ++chunkZ) {
             // resize and clear
@@ -9867,6 +9870,8 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
                 UnpackVoxelDataToEntityChunk(entityChunkData, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymin - gMinHeight, &gOptions, gMinecraftVersion, gVersionID)
             );
 
+            
+
             for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
                 for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
                     for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
@@ -9875,7 +9880,16 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
                         uint32_t mc_block_variant = (packed_mc_block >> 16);
 
                         uint32_t repacked_id = (mc_block_id << 16) | mc_block_variant;
-                        uint32_t voxel_id = MinewaysPjvsMapTable[repacked_id];
+                        uint32_t voxel_id = 0;
+                        if (MinewaysPjvsMapTable.count(repacked_id) == 0) {
+                            errorLog << "Cannot map block, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
+                        }
+                        else {
+                            voxel_id = MinewaysPjvsMapTable[repacked_id];
+                            if (mc_block_id != 0 && voxel_id == 0) {
+                                errorLog << "Missing mapping target, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
+                            }
+                        }
                         //uint32_t voxel_id = mapMinecraftBlockIdToPjvsVoxelID[mc_block_id];
                         NativeSparseVoxelChunk__SetVoxel(pEntityChunk, x, y, z, voxel_id);
                     }
@@ -9894,7 +9908,7 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
         }
         if (retCode) break;
     }
-
+    errorLog.close();
     delete mapimage;
     NativeSparseVoxelChunk__Destroy(pEntityChunk);
 
