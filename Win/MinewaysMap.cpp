@@ -38,6 +38,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <algorithm>
 
+#define ENTITY_CHUNK_SIZE 64
+
 static void clearUndoHighlight();
 static void copyHighlightState(HighlightBox& destBox, HighlightBox& srcBox);
 static unsigned char* draw(WorldGuide* pWorldGuide, int bx, int bz, int topy, int mapMaxY, Options* pOpts,
@@ -507,7 +509,7 @@ int DrawMapToArray(unsigned char* image, WorldGuide* pWorldGuide, int cx, int cz
 
 int UnpackVoxelDataToEntityChunk(std::vector<uint32_t>& entityChunkData, WorldGuide* pWorldGuide, int cx, int cz, int bottomY, Options* pOpts, int mcVersion, int versionID) {
     constexpr int chunkSize = 16; // mc chunk
-    constexpr int entityChunkSize = 256; // project-vs entity chunk
+    constexpr int entityChunkSize = ENTITY_CHUNK_SIZE; // project-vs entity chunk
     int sumRetCode = 0;
     int retCode;
 
@@ -5750,7 +5752,7 @@ static void acquireEntityChunkData(WorldGuide* pWorldGuide, int bx, int bz, int 
     }
     // At this point the block is loaded.
 
-    constexpr int EntityChunkSize = 256;
+    constexpr int EntityChunkSize = ENTITY_CHUNK_SIZE;
     constexpr int BlockSize = 16;
 
     for (int y = bottomY; y < block->heightAlloc && y - bottomY < EntityChunkSize; ++y) {
