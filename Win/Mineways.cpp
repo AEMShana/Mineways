@@ -9851,110 +9851,113 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
 
     std::ofstream errorLog("error.log");
 
-    for (int chunkX = 0; chunkX < w / ENTITY_CHUNK_SIZE; ++chunkX) {
-        for (int chunkZ = 0; chunkZ < h / ENTITY_CHUNK_SIZE; ++chunkZ) {
-            // resize and clear
-            writepng_cleanup(mapimage);
-            mapimage->image_data.resize(ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE * 3 * sizeof(unsigned char), 0x0);
-            
-            checkMapDrawErrorCode(
-                DrawMapToArray(imageDst, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymax - gMinHeight, gMaxHeight, ENTITY_CHUNK_SIZE, ENTITY_CHUNK_SIZE, 1, &gOptions, gHitsFound, nullptr, gMinecraftVersion, gVersionID)
-            );
+    for (int cur_ymin = ymin, chunk_height_id = 0; cur_ymin <= ymax; cur_ymin += ENTITY_CHUNK_SIZE, ++chunk_height_id) {
+        for (int chunkX = 0; chunkX < w / ENTITY_CHUNK_SIZE; ++chunkX) {
+            for (int chunkZ = 0; chunkZ < h / ENTITY_CHUNK_SIZE; ++chunkZ) {
+                // resize and clear
+                writepng_cleanup(mapimage);
+                mapimage->image_data.resize(ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE * 3 * sizeof(unsigned char), 0x0);
 
-            checkMapDrawErrorCode(
-                UnpackVoxelDataToEntityChunk(entityChunkData, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymin - gMinHeight, &gOptions, gMinecraftVersion, gVersionID)
-            );
+                checkMapDrawErrorCode(
+                    DrawMapToArray(imageDst, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, ymax - gMinHeight, gMaxHeight, ENTITY_CHUNK_SIZE, ENTITY_CHUNK_SIZE, 1, &gOptions, gHitsFound, nullptr, gMinecraftVersion, gVersionID)
+                );
 
-            for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
-                for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
-                    for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
-                        uint32_t packed_mc_block = entityChunkData[x + y * ENTITY_CHUNK_SIZE + z * ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE];
-                        uint32_t mc_block_id = packed_mc_block & 0xffff;
-                        uint32_t mc_block_variant = (packed_mc_block >> 16);
+                checkMapDrawErrorCode(
+                    UnpackVoxelDataToEntityChunk(entityChunkData, &gWorldGuide, xmin + chunkX * ENTITY_CHUNK_SIZE, zmin + chunkZ * ENTITY_CHUNK_SIZE, cur_ymin - gMinHeight, &gOptions, gMinecraftVersion, gVersionID)
+                );
 
-                        uint32_t repacked_id = (mc_block_id << 16) | mc_block_variant;
-                        uint32_t voxel_id = 0;
-                        // 跳过水方块
-                        if (!(mc_block_id == 8 || mc_block_id == 9)) {
-                            if (MinewaysPjvsMapTable.count(repacked_id) == 0) {
-                                errorLog << "Cannot map block, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
-                            }
-                            else {
-                                voxel_id = MinewaysPjvsMapTable[repacked_id];
-                                if (mc_block_id != 0 && voxel_id == 0) {
-                                    errorLog << "Missing mapping target, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
+                for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
+                    for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
+                        for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
+                            uint32_t packed_mc_block = entityChunkData[x + y * ENTITY_CHUNK_SIZE + z * ENTITY_CHUNK_SIZE * ENTITY_CHUNK_SIZE];
+                            uint32_t mc_block_id = packed_mc_block & 0xffff;
+                            uint32_t mc_block_variant = (packed_mc_block >> 16);
+
+                            uint32_t repacked_id = (mc_block_id << 16) | mc_block_variant;
+                            uint32_t voxel_id = 0;
+                            // 跳过水方块
+                            if (!(mc_block_id == 8 || mc_block_id == 9)) {
+                                if (MinewaysPjvsMapTable.count(repacked_id) == 0) {
+                                    errorLog << "Cannot map block, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
+                                }
+                                else {
+                                    voxel_id = MinewaysPjvsMapTable[repacked_id];
+                                    if (mc_block_id != 0 && voxel_id == 0) {
+                                        errorLog << "Missing mapping target, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
+                                    }
                                 }
                             }
+                            NativeSparseVoxelChunk__SetVoxel(pTempEntityChunk, x, y, z, voxel_id);
                         }
-                        NativeSparseVoxelChunk__SetVoxel(pTempEntityChunk, x, y, z, voxel_id);
                     }
                 }
-            }
 
-            for (int PJVSChunkX = chunkX * PJVS_CUBE_RESOLUTION; PJVSChunkX < (chunkX + 1) * PJVS_CUBE_RESOLUTION; ++PJVSChunkX) {
-                for (int PJVSChunkZ = chunkZ * PJVS_CUBE_RESOLUTION; PJVSChunkZ < (chunkZ + 1) * PJVS_CUBE_RESOLUTION; ++PJVSChunkZ) {
-                    for (int PJVSChunkY = 0; PJVSChunkY < PJVS_CUBE_RESOLUTION; ++PJVSChunkY) {
+                for (int PJVSChunkX = chunkX * PJVS_CUBE_RESOLUTION; PJVSChunkX < (chunkX + 1) * PJVS_CUBE_RESOLUTION; ++PJVSChunkX) {
+                    for (int PJVSChunkZ = chunkZ * PJVS_CUBE_RESOLUTION; PJVSChunkZ < (chunkZ + 1) * PJVS_CUBE_RESOLUTION; ++PJVSChunkZ) {
+                        for (int PJVSChunkY = 0; PJVSChunkY < PJVS_CUBE_RESOLUTION; ++PJVSChunkY) {
 
-                        uint32_t cur_region_x1 = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
-                        uint32_t cur_region_x2 = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
-                        uint32_t cur_region_y1 = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
-                        uint32_t cur_region_y2 = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
-                        uint32_t cur_region_z1 = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
-                        uint32_t cur_region_z2 = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_x1 = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_x2 = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_y1 = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_y2 = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_z1 = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + 0) / PJVS_CUBE_RESOLUTION;
+                            uint32_t cur_region_z2 = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + ENTITY_CHUNK_SIZE) / PJVS_CUBE_RESOLUTION;
 
-                        if (NativeSparseVoxelChunk__IsRegionEmpty(pTempEntityChunk, cur_region_x1, cur_region_x2, cur_region_y1, cur_region_y2, cur_region_z1, cur_region_z2)) {
-                            continue;
-                        }
+                            if (NativeSparseVoxelChunk__IsRegionEmpty(pTempEntityChunk, cur_region_x1, cur_region_x2, cur_region_y1, cur_region_y2, cur_region_z1, cur_region_z2)) {
+                                continue;
+                            }
 
-                        std::wstringstream wss;
-                        wss << chunkFileNameSafe << L"_x_" << PJVSChunkX << "_y_" << PJVSChunkZ << "_z_" << PJVSChunkY;
-                        std::wstring chunkIdStr = wss.str();
-                        assert(chunkIdStr.size() != 0);
+                            std::wstringstream wss;
+                            wss << chunkFileNameSafe << L"_x_" << PJVSChunkX << "_y_" << PJVSChunkZ << "_z_" << PJVSChunkY + chunk_height_id * PJVS_CUBE_RESOLUTION;
+                            std::wstring chunkIdStr = wss.str();
+                            assert(chunkIdStr.size() != 0);
 
-                        if (PJVSChunkY == 0) {
-                            for (int py = 0; py < ENTITY_CHUNK_SIZE; ++py) {
-                                for (int px = 0; px < ENTITY_CHUNK_SIZE; ++px) {
-                                    uint32_t pixel_index_x = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + px) / PJVS_CUBE_RESOLUTION;
-                                    uint32_t pixel_index_y = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + py) / PJVS_CUBE_RESOLUTION;
-                                    pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 0] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 0];
-                                    pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 1] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 1];
-                                    pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 2] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 2];
+                            if (PJVSChunkY == 0) {
+                                for (int py = 0; py < ENTITY_CHUNK_SIZE; ++py) {
+                                    for (int px = 0; px < ENTITY_CHUNK_SIZE; ++px) {
+                                        uint32_t pixel_index_x = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + px) / PJVS_CUBE_RESOLUTION;
+                                        uint32_t pixel_index_y = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + py) / PJVS_CUBE_RESOLUTION;
+                                        pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 0] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 0];
+                                        pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 1] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 1];
+                                        pjvs_mapimage->image_data[py * ENTITY_CHUNK_SIZE * 3 + px * 3 + 2] = mapimage->image_data[pixel_index_y * ENTITY_CHUNK_SIZE * 3 + pixel_index_x * 3 + 2];
+                                    }
+                                }
+
+                                wcscpy_s(pngFileNameSafe, MAX_PATH_AND_FILE, chunkIdStr.data());
+                                EnsureSuffix(pngFileNameSafe, pngFileNameSafe, L".png");
+
+                                // 0 means success. Currently we don't say what goes wrong otherwise.
+                                retCode |= writepng(pjvs_mapimage, 3, pngFileNameSafe);
+                                assert(retCode == 0);
+                                if (retCode) break;
+                            }
+
+                            for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
+                                for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
+                                    for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
+                                        uint32_t cube_index_x = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + x) / PJVS_CUBE_RESOLUTION;
+                                        uint32_t cube_index_y = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + y) / PJVS_CUBE_RESOLUTION;
+                                        uint32_t cube_index_z = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + z) / PJVS_CUBE_RESOLUTION;
+                                        assert(cube_index_x >= 0 && cube_index_x < ENTITY_CHUNK_SIZE);
+                                        assert(cube_index_y >= 0 && cube_index_y < ENTITY_CHUNK_SIZE);
+                                        assert(cube_index_z >= 0 && cube_index_z < ENTITY_CHUNK_SIZE);
+
+                                        uint32_t voxel_id = NativeSparseVoxelChunk__GetVoxel(pTempEntityChunk, cube_index_x, cube_index_y, cube_index_z);
+                                        NativeSparseVoxelChunk__SetVoxel(pEntityChunk, x, y, z, voxel_id);
+                                    }
+                                }
+                                percent = (float)((1ll * PJVSChunkZ + PJVSChunkX * (h / ENTITY_CHUNK_SIZE) * PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE * PJVS_CUBE_RESOLUTION + z + (PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE) / (float)(totalEntityChunkCount * ENTITY_CHUNK_SIZE);
+                                if (percent > pctprogress) {
+                                    updateProgress(percent, NULL);
+                                    pctprogress += 0.05f;
                                 }
                             }
 
-                            wcscpy_s(pngFileNameSafe, MAX_PATH_AND_FILE, chunkIdStr.data());
-                            EnsureSuffix(pngFileNameSafe, pngFileNameSafe, L".png");
-
-                            // 0 means success. Currently we don't say what goes wrong otherwise.
-                            retCode |= writepng(pjvs_mapimage, 3, pngFileNameSafe);
-                            assert(retCode == 0);
-                            if (retCode) break;
+                            std::string entityChunkFileName = wstring_to_utf8(chunkIdStr);
+                            entityChunkFileName += ".sector_voxel";
+                            NativeSparseVoxelChunk__SaveToVoxelFile(pEntityChunk, entityChunkFileName.c_str());
                         }
-
-                        for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
-                            for (int y = 0; y < ENTITY_CHUNK_SIZE; ++y) {
-                                for (int x = 0; x < ENTITY_CHUNK_SIZE; ++x) {
-                                    uint32_t cube_index_x = ((PJVSChunkX % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + x) / PJVS_CUBE_RESOLUTION;
-                                    uint32_t cube_index_y = ((PJVSChunkZ % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + y) / PJVS_CUBE_RESOLUTION;
-                                    uint32_t cube_index_z = ((PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE + z) / PJVS_CUBE_RESOLUTION;
-                                    assert(cube_index_x >= 0 && cube_index_x < ENTITY_CHUNK_SIZE);
-                                    assert(cube_index_y >= 0 && cube_index_y < ENTITY_CHUNK_SIZE);
-                                    assert(cube_index_z >= 0 && cube_index_z < ENTITY_CHUNK_SIZE);
-
-                                    uint32_t voxel_id = NativeSparseVoxelChunk__GetVoxel(pTempEntityChunk, cube_index_x, cube_index_y, cube_index_z);
-                                    NativeSparseVoxelChunk__SetVoxel(pEntityChunk, x, y, z, voxel_id);
-                                }
-                            }
-                            percent = (float)((1ll * PJVSChunkZ + PJVSChunkX * (h / ENTITY_CHUNK_SIZE) * PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE * PJVS_CUBE_RESOLUTION + z + (PJVSChunkY % PJVS_CUBE_RESOLUTION) * ENTITY_CHUNK_SIZE) / (float)(totalEntityChunkCount * ENTITY_CHUNK_SIZE);
-                            if (percent > pctprogress) {
-                                updateProgress(percent, NULL);
-                                pctprogress += 0.05f;
-                            }
-                        }
-
-                        std::string entityChunkFileName = wstring_to_utf8(chunkIdStr);
-                        entityChunkFileName += ".sector_voxel";
-                        NativeSparseVoxelChunk__SaveToVoxelFile(pEntityChunk, entityChunkFileName.c_str());
+                        if (retCode) break;
                     }
                     if (retCode) break;
                 }
@@ -9962,7 +9965,6 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
             }
             if (retCode) break;
         }
-        if (retCode) break;
     }
     errorLog.close();
     delete mapimage;
