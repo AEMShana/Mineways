@@ -2,7 +2,7 @@
 #include <unordered_map>
 std::unordered_map<int, int> MinewaysPjvsMapTable = {
     {65552, 0},
-    {15, 1073741934},
+    {15, 1073741992},
     {15335552, 0},
     {12910758, 0},
     {12910757, 0},
