@@ -201,7 +201,7 @@ static int gBottomControlEnabled = FALSE;
 #define ENTITY_CHUNK_EXPORT 5
 
 #define ENTITY_CHUNK_SIZE   64
-#define PJVS_CUBE_RESOLUTION 1
+#define PJVS_CUBE_RESOLUTION 4
 
 static int gPrintModel = RENDERING_EXPORT;
 static BOOL gExported = 0;
@@ -9837,7 +9837,7 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
 
     // check if map file has ".png" at the end - if not, add it.
     wchar_t chunkFileNameSafe[MAX_PATH_AND_FILE];
-    wchar_t pngFileNameSafe[MAX_PATH_AND_FILE];
+    //wchar_t pngFileNameSafe[MAX_PATH_AND_FILE];
 
     wcscpy_s(chunkFileNameSafe, MAX_PATH_AND_FILE, mapFileName);
     RemoveSuffix(chunkFileNameSafe, mapFileName, L".png");
@@ -9923,13 +9923,13 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
                                     }
                                 }
 
-                                wcscpy_s(pngFileNameSafe, MAX_PATH_AND_FILE, chunkIdStr.data());
-                                EnsureSuffix(pngFileNameSafe, pngFileNameSafe, L".png");
+                                //wcscpy_s(pngFileNameSafe, MAX_PATH_AND_FILE, chunkIdStr.data());
+                                //EnsureSuffix(pngFileNameSafe, pngFileNameSafe, L".png");
 
-                                // 0 means success. Currently we don't say what goes wrong otherwise.
-                                retCode |= writepng(pjvs_mapimage, 3, pngFileNameSafe);
-                                assert(retCode == 0);
-                                if (retCode) break;
+                                //// 0 means success. Currently we don't say what goes wrong otherwise.
+                                //retCode |= writepng(pjvs_mapimage, 3, pngFileNameSafe);
+                                //assert(retCode == 0);
+                                //if (retCode) break;
                             }
 
                             for (int z = 0; z < ENTITY_CHUNK_SIZE; ++z) {
