@@ -9874,14 +9874,16 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
                             uint32_t mc_block_variant = (packed_mc_block >> 16);
 
                             uint32_t repacked_id = (mc_block_id << 16) | mc_block_variant;
-                            uint32_t voxel_id = 0;
+                            uint16_t voxel_id = 0;
                             // Ìø¹ıË®·½¿é
                             if (!(mc_block_id == 8 || mc_block_id == 9)) {
                                 if (MinewaysPjvsMapTable.count(repacked_id) == 0) {
                                     errorLog << "Cannot map block, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
                                 }
                                 else {
-                                    voxel_id = MinewaysPjvsMapTable[repacked_id];
+                                    // Important!!!!
+                                    voxel_id = (MinewaysPjvsMapTable[repacked_id] & 0xFFF);
+                                    if (voxel_id != 0) voxel_id |= 0x4000;
                                     if (mc_block_id != 0 && voxel_id == 0) {
                                         errorLog << "Missing mapping target, id:" << mc_block_id << " variant:" << mc_block_variant << " packed:" << repacked_id << std::endl;
                                     }
@@ -9942,7 +9944,7 @@ static bool saveEntityChunkFile(int xmin, int xmax, int ymin, int ymax, int zmin
                                         assert(cube_index_y >= 0 && cube_index_y < ENTITY_CHUNK_SIZE);
                                         assert(cube_index_z >= 0 && cube_index_z < ENTITY_CHUNK_SIZE);
 
-                                        uint32_t voxel_id = NativeSparseVoxelChunk__GetVoxel(pTempEntityChunk, cube_index_x, cube_index_y, cube_index_z);
+                                        uint16_t voxel_id = NativeSparseVoxelChunk__GetVoxel(pTempEntityChunk, cube_index_x, cube_index_y, cube_index_z);
                                         NativeSparseVoxelChunk__SetVoxel(pEntityChunk, x, y, z, voxel_id);
                                     }
                                 }
